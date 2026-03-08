@@ -266,7 +266,8 @@ class CredentialSetupSession:
         try:
             generate_and_save_credential_key()
             self._print(
-                f"{Colors.GREEN}✓ Encryption key saved to ~/.nova-nexa/secrets/credential_key{Colors.NC}"
+                f"{Colors.GREEN}✓ Encryption key saved to "
+                f"~/.nova-nexa/secrets/credential_key{Colors.NC}"
             )
             return True
         except Exception as e:

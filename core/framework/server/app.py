@@ -53,7 +53,8 @@ def validate_agent_path(agent_path: str | Path) -> Path:
         if resolved.is_relative_to(root) and resolved != root:
             return resolved
     raise ValueError(
-        "agent_path must be inside an allowed directory (exports/, examples/, or ~/.nova-nexa/agents/)"
+        "agent_path must be inside an allowed directory"
+        " (exports/, examples/, or ~/.nova-nexa/agents/)"
     )
 
 
@@ -192,7 +193,8 @@ def create_app(model: str | None = None) -> web.Application:
 
                 generate_and_save_credential_key()
                 logger.info(
-                    "Generated and persisted NEXA_CREDENTIAL_KEY to ~/.nova-nexa/secrets/credential_key"
+                    "Generated and persisted NEXA_CREDENTIAL_KEY"
+                    " to ~/.nova-nexa/secrets/credential_key"
                 )
             except Exception as exc:
                 logger.warning("Could not auto-persist NEXA_CREDENTIAL_KEY: %s", exc)
