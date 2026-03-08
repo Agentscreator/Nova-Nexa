@@ -188,9 +188,9 @@ def remove_env_var_from_shell_config(
             stripped = line.strip()
 
             # Skip comment lines that precede the export
-            if stripped.startswith("# Added by Hive") or stripped.startswith(
-                "# Added by Nova Nexa"
-            ):
+            is_hive_comment = stripped.startswith("# Added by Hive")
+            is_nexa_comment = stripped.startswith("# Added by Nova Nexa")
+            if is_hive_comment or is_nexa_comment:
                 # Check if next non-empty line is the export
                 for j in range(i + 1, len(lines)):
                     next_line = lines[j].strip()
