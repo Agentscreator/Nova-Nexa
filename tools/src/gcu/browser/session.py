@@ -366,7 +366,12 @@ class BrowserSession:
                 else:
                     # Fallback to ~/.nova-nexa/agents/{agent}/browser/{profile}
                     self.user_data_dir = (
-                        Path.home() / ".nova-nexa" / "agents" / agent_name / "browser" / self.profile
+                        Path.home()
+                        / ".nova-nexa"
+                        / "agents"
+                        / agent_name
+                        / "browser"
+                        / self.profile
                     )
 
                 self.user_data_dir.mkdir(parents=True, exist_ok=True)
