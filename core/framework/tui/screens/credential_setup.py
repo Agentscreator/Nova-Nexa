@@ -228,8 +228,7 @@ class CredentialSetupScreen(ModalScreen[bool | None]):
             num_synced = provider.sync_all(store)
             if num_synced == 0:
                 self.notify(
-                    "No active integrations found in Aden. "
-                    "Connect integrations at nova-nexa.dev.",
+                    "No active integrations found in Aden. Connect integrations at nova-nexa.dev.",
                     severity="warning",
                     timeout=8,
                 )

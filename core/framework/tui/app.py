@@ -1508,5 +1508,6 @@ class NexaTUI(App):
         except Exception:
             pass
 
+
 # Backward-compatible alias for imports using the old name
 AdenTUI = NexaTUI

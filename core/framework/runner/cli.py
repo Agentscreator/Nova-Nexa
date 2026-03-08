@@ -213,8 +213,7 @@ def register_commands(subparsers: argparse._SubParsersAction) -> None:
         "code",
         help="Launch Nova Nexa Coder to build agents",
         description=(
-            "Interactive agent builder. Describe what you want"
-            " and Nova Nexa Coder builds it."
+            "Interactive agent builder. Describe what you want and Nova Nexa Coder builds it."
         ),
     )
     code_parser.add_argument(

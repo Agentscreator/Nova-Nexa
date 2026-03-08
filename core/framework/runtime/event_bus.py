@@ -31,7 +31,8 @@ logger = logging.getLogger(__name__)
 # The file is opened lazily on first publish and flushed after every write.
 # ---------------------------------------------------------------------------
 _DEBUG_EVENTS_RAW = os.environ.get(
-    "NEXA_DEBUG_EVENTS", os.environ.get("HIVE_DEBUG_EVENTS", ""),
+    "NEXA_DEBUG_EVENTS",
+    os.environ.get("HIVE_DEBUG_EVENTS", ""),
 ).strip()
 _DEBUG_EVENTS_ENABLED = _DEBUG_EVENTS_RAW.lower() in ("1", "true", "full") or (
     bool(_DEBUG_EVENTS_RAW) and _DEBUG_EVENTS_RAW.lower() not in ("0", "false", "")
