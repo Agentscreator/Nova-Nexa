@@ -45,7 +45,7 @@ def get_nexa_config() -> dict[str, Any]:
             return json.load(f)
     except (json.JSONDecodeError, OSError) as e:
         logger.warning(
-            "Failed to load Nova Nexa config %s: %s",
+            "Failed to load Hive config %s: %s",
             config_file,
             e,
         )

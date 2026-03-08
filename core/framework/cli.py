@@ -69,7 +69,7 @@ def main():
 
     parser = argparse.ArgumentParser(
         prog="nexa",
-        description="Nova Nexa - Enterprise AI operations powered by Amazon Nova",
+        description="Nova Nexa hive - Enterprise AI operations powered by Amazon Nova",
     )
     parser.add_argument(
         "--model",

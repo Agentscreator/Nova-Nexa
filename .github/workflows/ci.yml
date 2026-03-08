@@ -41,6 +41,7 @@ jobs:
   test:
     name: Test Python Framework
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 365
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
@@ -59,7 +60,7 @@ jobs:
         run: |
           cd core
           uv sync
-          uv run pytest tests/ -v
+          uv run pytest tests/ -v -n auto
 
   test-tools:
     name: Test Tools (${{ matrix.os }})

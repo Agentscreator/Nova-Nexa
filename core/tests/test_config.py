@@ -13,7 +13,7 @@ class TestGetHiveConfig:
         config_file = tmp_path / "configuration.json"
         config_file.write_text('{"broken": }')
 
-        monkeypatch.setattr("framework.config.HIVE_CONFIG_FILE", config_file)
+        monkeypatch.setattr("framework.config.NEXA_CONFIG_FILE", config_file)
 
         with caplog.at_level(logging.WARNING):
             result = get_hive_config()

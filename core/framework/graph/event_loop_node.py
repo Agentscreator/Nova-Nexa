@@ -985,53 +985,7 @@ class EventLoopNode(NodeProtocol):
             recent_responses.append(assistant_text)
             if len(recent_responses) > self._config.stall_detection_threshold:
                 recent_responses.pop(0)
-            if self._is_stalled(recent_responses):
-                await self._publish_stalled(stream_id, node_id, execution_id)
-                latency_ms = int((time.time() - start_time) * 1000)
-                _continue_count += 1
-                if ctx.runtime_logger:
-                    iter_latency_ms = int((time.time() - iter_start) * 1000)
-                    ctx.runtime_logger.log_step(
-                        node_id=node_id,
-                        node_type="event_loop",
-                        step_index=iteration,
-                        verdict="CONTINUE",
-                        verdict_feedback="Stall detected before judge evaluation",
-                        tool_calls=logged_tool_calls,
-                        llm_text=assistant_text,
-                        input_tokens=turn_tokens.get("input", 0),
-                        output_tokens=turn_tokens.get("output", 0),
-                        latency_ms=iter_latency_ms,
-                    )
-                    ctx.runtime_logger.log_node_complete(
-                        node_id=node_id,
-                        node_name=ctx.node_spec.name,
-                        node_type="event_loop",
-                        success=False,
-                        error="Node stalled",
-                        total_steps=iteration + 1,
-                        tokens_used=total_input_tokens + total_output_tokens,
-                        input_tokens=total_input_tokens,
-                        output_tokens=total_output_tokens,
-                        latency_ms=latency_ms,
-                        exit_status="stalled",
-                        accept_count=_accept_count,
-                        retry_count=_retry_count,
-                        escalate_count=_escalate_count,
-                        continue_count=_continue_count,
-                    )
-                return NodeResult(
-                    success=False,
-                    error=(
-                        f"Node stalled: {self._config.stall_detection_threshold} similar "
-                        f"responses ({self._config.stall_similarity_threshold * 100:.0f}+"
-                        " threshold)"
-                    ),
-                    output=accumulator.to_dict(),
-                    tokens_used=total_input_tokens + total_output_tokens,
-                    latency_ms=latency_ms,
-                    conversation=conversation if _is_continuous else None,
-                )
+            _stall_detected = self._is_stalled(recent_responses)
 
             # 6f'. Tool doom loop detection
             # Use logged_tool_calls (persists across inner iterations) and
@@ -1638,6 +1592,60 @@ class EventLoopNode(NodeProtocol):
                     )
                 if verdict.feedback:
                     await conversation.add_user_message(f"[Judge feedback]: {verdict.feedback}")
+
+                # 6j. Post-judge stall detection.
+                # Checked after the judge so that an ACCEPT verdict is
+                # never preempted by stall heuristics.  Only terminates
+                # the loop when the judge itself chose RETRY — meaning
+                # the node is stuck and the judge can't break the cycle.
+                if _stall_detected:
+                    await self._publish_stalled(stream_id, node_id, execution_id)
+                    latency_ms = int((time.time() - start_time) * 1000)
+                    _continue_count += 1
+                    if ctx.runtime_logger:
+                        iter_latency_ms = int((time.time() - iter_start) * 1000)
+                        ctx.runtime_logger.log_step(
+                            node_id=node_id,
+                            node_type="event_loop",
+                            step_index=iteration,
+                            verdict="CONTINUE",
+                            verdict_feedback="Stall detected after judge RETRY",
+                            tool_calls=logged_tool_calls,
+                            llm_text=assistant_text,
+                            input_tokens=turn_tokens.get("input", 0),
+                            output_tokens=turn_tokens.get("output", 0),
+                            latency_ms=iter_latency_ms,
+                        )
+                        ctx.runtime_logger.log_node_complete(
+                            node_id=node_id,
+                            node_name=ctx.node_spec.name,
+                            node_type="event_loop",
+                            success=False,
+                            error="Node stalled",
+                            total_steps=iteration + 1,
+                            tokens_used=total_input_tokens + total_output_tokens,
+                            input_tokens=total_input_tokens,
+                            output_tokens=total_output_tokens,
+                            latency_ms=latency_ms,
+                            exit_status="stalled",
+                            accept_count=_accept_count,
+                            retry_count=_retry_count,
+                            escalate_count=_escalate_count,
+                            continue_count=_continue_count,
+                        )
+                    return NodeResult(
+                        success=False,
+                        error=(
+                            f"Node stalled: {self._config.stall_detection_threshold} similar "
+                            f"responses ({self._config.stall_similarity_threshold * 100:.0f}+"
+                            " threshold)"
+                        ),
+                        output=accumulator.to_dict(),
+                        tokens_used=total_input_tokens + total_output_tokens,
+                        latency_ms=latency_ms,
+                        conversation=conversation if _is_continuous else None,
+                    )
+
                 continue
 
         # 7. Max iterations exhausted
@@ -2958,6 +2966,8 @@ class EventLoopNode(NodeProtocol):
 
         Detects when N consecutive responses have similarity >= threshold.
         This catches phrases like "I'm still stuck" vs "I'm stuck".
+        Only triggers when *all* pairwise comparisons exceed the threshold,
+        meaning every recent response looks essentially the same.
         """
         if len(recent_responses) < self._config.stall_detection_threshold:
             return False
@@ -2965,13 +2975,12 @@ class EventLoopNode(NodeProtocol):
             return False
 
         threshold = self._config.stall_similarity_threshold
-        # Check similarity against all recent responses (excluding self)
+        # All pairs must exceed the threshold for a true stall
         for i, resp in enumerate(recent_responses):
-            # Compare against all previous responses
             for prev in recent_responses[:i]:
-                if self._ngram_similarity(resp, prev) >= threshold:
-                    return True
-        return False
+                if self._ngram_similarity(resp, prev) < threshold:
+                    return False
+        return True
 
     @staticmethod
     def _is_transient_error(exc: BaseException) -> bool:
