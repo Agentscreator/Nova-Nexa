@@ -1,0 +1,26 @@
+{
+  "name": "nova-nexa",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Nova Nexa - Enterprise AI operations powered by Amazon Nova",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nova-nexa/nova-nexa.git"
+  },
+  "license": "Apache-2.0",
+  "scripts": {
+    "test:duplicates": "bun test scripts/auto-close-duplicates",
+    "frontend:dev": "cd core/frontend && npm run dev",
+    "frontend:build": "cd core/frontend && npm run build",
+    "frontend:preview": "cd core/frontend && npm run preview"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "packageManager": "npm@10.2.0"
+}
