@@ -114,7 +114,9 @@ def test_list_agent_tools_groups_by_provider_and_keeps_uncredentialed(monkeypatc
     google_tools = {t["name"] for t in providers["google"]["tools"]}
     assert "gmail_list_messages" in google_tools
     assert "calendar_list_events" in google_tools
-    assert "send_email" in google_tools
+    # send_email is intentionally excluded from google's tools list in email.py;
+    # it's a multi-provider tool that checks credentials at runtime.
+    assert "send_email" not in google_tools
     assert providers["google"]["authorization"]
 
     resend_tools = {t["name"] for t in providers["resend"]["tools"]}
