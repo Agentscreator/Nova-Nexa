@@ -1,5 +1,5 @@
 [project]
-name = "nova-nexa"
+name = "framework"
 version = "1.0.0"
 description = "Enterprise AI operations framework powered by Amazon Nova — Nova Pro orchestrator + Nova Micro workers"
 readme = "README.md"
