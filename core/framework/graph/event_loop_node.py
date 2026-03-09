@@ -981,10 +981,14 @@ class EventLoopNode(NodeProtocol):
             else:
                 _consecutive_empty_turns = 0
 
-            # 6f. Stall detection
-            recent_responses.append(assistant_text)
-            if len(recent_responses) > self._config.stall_detection_threshold:
-                recent_responses.pop(0)
+            # 6f. Stall detection — only on text-only turns.
+            # Turns with tool calls or set_output represent actual work;
+            # the text portion may be boilerplate ("Done.", "Iteration N")
+            # even when the node is making real progress via tools.
+            if not real_tool_results and not outputs_set:
+                recent_responses.append(assistant_text)
+                if len(recent_responses) > self._config.stall_detection_threshold:
+                    recent_responses.pop(0)
             _stall_detected = self._is_stalled(recent_responses)
 
             # 6f'. Tool doom loop detection
@@ -1047,6 +1051,11 @@ class EventLoopNode(NodeProtocol):
                     else:
                         await conversation.add_user_message(warning_msg)
                         recent_tool_fingerprints.clear()
+                        recent_responses.clear()
+                    # Doom loop was handled — suppress stall detection
+                    # for this iteration so the judge can evaluate the
+                    # intervention rather than terminating early.
+                    _stall_detected = False
             else:
                 # Text-only turn breaks the doom loop chain
                 recent_tool_fingerprints.clear()
@@ -2132,7 +2141,6 @@ class EventLoopNode(NodeProtocol):
                     # --- Framework-level escalate handling ---
                     reason = str(tc.tool_input.get("reason", "")).strip()
                     context = str(tc.tool_input.get("context", "")).strip()
-                    # Always wait for queen guidance
 
                     if stream_id in ("queen", "judge"):
                         result = ToolResult(
@@ -2164,7 +2172,12 @@ class EventLoopNode(NodeProtocol):
                         context=context,
                         execution_id=execution_id,
                     )
-                    queen_input_requested = True
+                    # Only block for queen guidance when explicitly requested.
+                    # Fire-and-forget escalations (wait_for_response=false)
+                    # emit the event but let the worker continue autonomously.
+                    wait_for = tc.tool_input.get("wait_for_response", False)
+                    if wait_for is True or wait_for == "true":
+                        queen_input_requested = True
 
                     result = ToolResult(
                         tool_use_id=tc.tool_use_id,
@@ -3059,10 +3072,12 @@ class EventLoopNode(NodeProtocol):
         self,
         recent_tool_fingerprints: list[list[tuple[str, str]]],
     ) -> tuple[bool, str]:
-        """Detect doom loop using n-gram similarity on tool inputs.
+        """Detect doom loop via exact fingerprint match on tool calls.
 
-        Detects when N consecutive turns have similar tool calls.
-        Similarity applies to the canonicalized tool input strings.
+        A doom loop is N consecutive turns where the tool name + args
+        are *identical*.  Different arguments = different approach =
+        not a doom loop.  This is intentionally stricter than stall
+        detection (which uses n-gram similarity on free-form text).
 
         Returns (is_doom_loop, description).
         """
@@ -3075,22 +3090,13 @@ class EventLoopNode(NodeProtocol):
         if not first:
             return False, ""
 
-        # Convert a turn's list of (name, args) pairs to a single comparable string.
-        def _turn_sig(fp: list[tuple[str, str]]) -> str:
-            return "|".join(f"{name}:{args}" for name, args in fp)
+        # Exact match: every recent turn must have the same fingerprint.
+        identical_count = sum(1 for fp in recent_tool_fingerprints if fp == first)
 
-        first_sig = _turn_sig(first)
-        similarity_threshold = self._config.stall_similarity_threshold
-        similar_count = sum(
-            1
-            for fp in recent_tool_fingerprints
-            if self._ngram_similarity(_turn_sig(fp), first_sig) >= similarity_threshold
-        )
-
-        if similar_count >= threshold:
+        if identical_count >= threshold:
             tool_names = [name for fp in recent_tool_fingerprints for name, _ in fp]
             desc = (
-                f"Doom loop detected: {similar_count}/{len(recent_tool_fingerprints)} "
+                f"Doom loop detected: {identical_count}/{len(recent_tool_fingerprints)} "
                 f"consecutive similar tool calls ({', '.join(tool_names)})"
             )
             return True, desc
