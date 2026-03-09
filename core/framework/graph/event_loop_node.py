@@ -985,7 +985,14 @@ class EventLoopNode(NodeProtocol):
             # Turns with tool calls or set_output represent actual work;
             # the text portion may be boilerplate ("Done.", "Iteration N")
             # even when the node is making real progress via tools.
-            if not real_tool_results and not outputs_set:
+            # Use logged_tool_calls (accumulates across inner iterations) rather
+            # than real_tool_results, which resets each inner iteration and is
+            # always [] when the final inner call was a text-only response.
+            _had_real_mcp_tools = any(
+                tc.get("tool_name") not in ("set_output", "ask_user", "escalate")
+                for tc in logged_tool_calls
+            )
+            if not _had_real_mcp_tools and not outputs_set:
                 recent_responses.append(assistant_text)
                 if len(recent_responses) > self._config.stall_detection_threshold:
                     recent_responses.pop(0)

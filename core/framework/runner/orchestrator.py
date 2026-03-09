@@ -55,14 +55,14 @@ class AgentOrchestrator:
     def __init__(
         self,
         llm: LLMProvider | None = None,
-        model: str = "bedrock/amazon.nova-pro-v1:0",
+        model: str = "claude-haiku-4-5-20251001",
     ):
         """
         Initialize the orchestrator.
 
         Args:
             llm: LLM provider for routing decisions (auto-creates if None)
-            model: Model to use for routing (defaults to Nova Pro)
+            model: Model to use for routing (defaults to Claude Haiku)
         """
         self._agents: dict[str, RegisteredAgent] = {}
         self._llm = llm
